@@ -20,7 +20,7 @@ addEventListener('resize',resize);resize();
 const loader=new GLTFLoader();
 const EN_MODELS=['GreenBlob','PinkBlob','Mushnub','Chicken','Pigeon','Cactoro','Fish','Dog','Cat','Wizard','Ghost','Armabee','Glub','Squidle','Goleling','Hywirl','Dragon'];
 const BOSS_MODELS=['MushroomKing','Yeti','BlueDemon','Demon'];
-const M={};let REST=null,loaded=0,total=0,READY=false;
+const M={};let REST=null,FOODG=null,loaded=0,total=0,READY=false;
 function loadGLB(url){total++;return new Promise(ok=>loader.load(url,g=>{loaded++;prog();ok(g)},undefined,e=>{console.warn('load fail',url,e);loaded++;prog();ok(null)}))}
 function prog(){const p=Math.round(loaded/Math.max(1,total)*100);$('loadMsg').textContent=p<100?'読み込み中… '+p+'%':'準備OK！'}
 function prepChar(g,h){ // returns {proto, clips}
@@ -29,14 +29,14 @@ function prepChar(g,h){ // returns {proto, clips}
  const sz=box.getSize(new THREE.Vector3());const sc=h/Math.max(0.01,sz.y);const w=new THREE.Group();s.scale.setScalar(sc);s.position.set(0,-box.min.y*sc,0);w.add(s);
  const clips={};for(const c of g.animations)clips[c.name]=c;return {proto:w,clips}}
 async function loadAll(){
- const ps=[loadGLB('assets/models/restaurant.glb').then(g=>{REST=g&&g.scene}),loadGLB('assets/models/player.glb').then(g=>M.player=prepChar(g,2.6))];
+ const ps=[loadGLB('assets/models/restaurant.glb').then(g=>{REST=g&&g.scene}),loadGLB('assets/models/foods.glb').then(g=>{FOODG=g&&g.scene}),loadGLB('assets/models/player.glb').then(g=>M.player=prepChar(g,2.6))];
  for(const n of EN_MODELS)ps.push(loadGLB('assets/models/e_'+n+'.glb').then(g=>M['e_'+n]=prepChar(g,1.9)));
  for(const n of BOSS_MODELS)ps.push(loadGLB('assets/models/b_'+n+'.glb').then(g=>M['b_'+n]=prepChar(g,1)));
  await Promise.all(ps);READY=true;prog();$('bNew').disabled=false;$('bCont').disabled=false;if(!load())$('bCont').style.display='none'}
 // ---- props (instanced) ----
 const PROPS={};const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_v=new THREE.Vector3(),_s=new THREE.Vector3(),_e=new THREE.Euler(),_c=new THREE.Color();
-function propParts(name){if(PROPS[name])return PROPS[name];const parts=[];const node=REST&&REST.children.find(c=>c.name===name);
- if(node){REST.updateMatrixWorld(true);const inv=node.matrixWorld.clone().invert();node.traverse(o=>{if(o.isMesh)parts.push({geo:o.geometry,mat:o.material,m:inv.clone().multiply(o.matrixWorld)})})}
+function propParts(name){if(PROPS[name])return PROPS[name];const parts=[];const node=(REST&&REST.children.find(c=>c.name===name))||(FOODG&&FOODG.children.find(c=>c.name===name));
+ if(node){(REST||FOODG).updateMatrixWorld(true);FOODG&&FOODG.updateMatrixWorld(true);const inv=node.matrixWorld.clone().invert();node.traverse(o=>{if(o.isMesh)parts.push({geo:o.geometry,mat:o.material,m:inv.clone().multiply(o.matrixWorld)})})}
  else{parts.push({geo:new THREE.BoxGeometry(1.8,1,1.8).translate(0,0.5,0),mat:new THREE.MeshStandardMaterial({color:0x886655}),m:new THREE.Matrix4()})}
  return PROPS[name]=parts}
 function mtx(x,y,z,ry,sx,sy,sz){_e.set(0,ry||0,0);_q.setFromEuler(_e);return new THREE.Matrix4().compose(_v.set(x,y,z),_q,_s.set(sx??1,sy??sx??1,sz??sx??1))}
@@ -97,12 +97,64 @@ const SPEC={
  lifesteal:{n:'吸血の牙',d:'与ダメージの一部でHP回復'},
  thorns:{n:'いばらの鎧',d:'触れた敵に反撃ダメージ'}};
 const STATS={might:{n:'ちから',d:'ダメージ+15%'},speed:{n:'すばやさ',d:'移動速度+10%'},maxhp:{n:'タフネス',d:'最大HP+20・全回復'},haste:{n:'クイック',d:'攻撃間隔-8%'},magnet:{n:'マグネット',d:'経験値を引き寄せる範囲+40%'},regen:{n:'リジェネ',d:'HPが毎秒0.5回復'},area:{n:'エリア',d:'攻撃範囲+12%'}};
-// floor themes
-const THEMES=[
- {n:'厨房',floor:[1,0.95,0.9],floor2:[0.85,0.8,0.75],border:['kitchencounter_straight_A','kitchencounter_straight_B','kitchencounter_straight_decorated','kitchencounter_sink','stove_multi','stove_single','oven','fridge_A','dishrack_plates'],deco:['kitchentable_A','kitchentable_B','kitchentable_A_large_decorated','kitchentable_sink'],scatter:['pot_A_stew','pan_B','food_ingredient_tomato','plate_dirty']},
- {n:'ダイニングホール',floor:[1.1,0.8,0.65],floor2:[0.95,0.65,0.5],border:['wall_window_open','wall','wall_decorated','wall_window_closed','pillar_A'],deco:['table_round_A_decorated','table_round_A','table_round_B'],scatter:['chair_A','chair_B','menu','plate']},
- {n:'食料倉庫',floor:[0.75,0.75,0.7],floor2:[0.62,0.62,0.58],border:['crate_tomatoes','crate_carrots','crate_cheese','crate_lettuce','crate_onions','crate_potatoes','crate_steak','crate_ham','fridge_B','shelf_papertowel_decorated'],deco:['crate','crate_buns','jar_A_large','jar_C_large'],scatter:['food_ingredient_potato','food_ingredient_onion','crate_lid']},
- {n:'VIPラウンジ',floor:[0.7,0.6,1.0],floor2:[0.55,0.45,0.85],border:['wall_orderwindow','wall_window_open','pillar_B','wall'],deco:['table_round_A_decorated','kitchentable_A_large_decorated','stew_pot'],scatter:['chair_stool','food_dinner','food_stew']}];
+// ================= v2: shops, foods, behaviors =================
+const FOODJ={'bowl-broth':'ラーメン','bowl-soup':'スープ','egg-cooked':'目玉焼き','maki-roe':'いくら巻き','maki-salmon':'サーモン巻き','maki-vegetable':'かっぱ巻き','sushi-egg':'玉子寿司','sushi-salmon':'サーモン寿司','rice-ball':'おにぎり','fish':'焼き魚','bread':'食パン','croissant':'クロワッサン','loaf-baguette':'バゲット','loaf-round':'カンパーニュ','muffin':'マフィン','pie':'アップルパイ','pizza':'ピザ','mushroom':'マッシュルーム','paprika':'パプリカ','cheese':'チーズ','cake':'ケーキ','cupcake':'カップケーキ','donut-sprinkles':'カラフルドーナツ','donut-chocolate':'チョコドーナツ','ice-cream':'ソフトクリーム','sundae':'パフェ','waffle':'ワッフル','pancakes':'パンケーキ','cup-coffee':'コーヒー','frappe':'フラッペ','cookie-chocolate':'チョコクッキー','chinese':'中華テイクアウト','dim-sum':'小籠包','steamer':'せいろ蒸し','skewer-vegetables':'野菜串','eggplant':'ナス','burger-cheese':'チーズバーガー','fries':'フライドポテト','hot-dog':'ホットドッグ','soda':'ソーダ','corn-dog':'アメリカンドッグ','sandwich':'サンドイッチ','taco':'タコス','watermelon':'スイカ','strawberry':'いちご','banana':'バナナ','pineapple':'パイナップル','meat-ribs':'スペアリブ','turkey':'ローストチキン','whole-ham':'骨付きハム','popsicle':'アイスキャンディー','lollypop':'ペロペロキャンディ','pudding':'プリン','leek':'ネギ','food_burger':'ビッグバーガー','food_stew':'ビーフシチュー','food_dinner':'ステーキディナー','pot_A_stew':'寸胴カレー'};
+const FOODK=Object.keys(FOODJ);
+const SHOPS=[
+ {n:'ラーメン屋「麺屋たわー」',sign:'🍜 麺屋 たわー',fl:'wood',c1:'#8a5a3a',c2:'#7a4e33',wall:0x4a2a1c,sb:'#7a1a10',border:['kitchencounter_straight_A','kitchencounter_straight_B','stove_multi','stove_single','kitchencounter_sink','pot_large'],deco:['kitchentable_A','kitchentable_B','table_round_A_small'],scatter:['bowl-broth','chopstick','leek','soy','chair_stool'],foods:['bowl-broth','bowl-soup','egg-cooked','leek','dim-sum'],beh:['shoot','dash','explode']},
+ {n:'寿司屋「すし処 波」',sign:'🍣 すし処 波',fl:'tatami',c1:'#c8c08a',c2:'#b5ac78',wall:0x2e3b2e,sb:'#1e3a5a',border:['kitchencounter_straight_B','wall_orderwindow','fridge_B','kitchencounter_straight_A_backsplash'],deco:['kitchentable_A_large','kitchentable_B'],scatter:['cutting-board-japanese','maki-salmon','fish','sushi-egg'],foods:['maki-roe','maki-salmon','maki-vegetable','sushi-egg','sushi-salmon','rice-ball','fish'],beh:['kite','split','shoot']},
+ {n:'ベーカリー「こむぎ堂」',sign:'🥐 こむぎ堂ベーカリー',fl:'tile',c1:'#e8d6b8',c2:'#dcc8a8',wall:0x8a5a3a,sb:'#a0602a',border:['oven','kitchentable_A_large_decorated','shelf_papertowel_decorated','kitchencounter_straight_decorated','crate_buns'],deco:['kitchentable_A','crate_buns','jar_A_large'],scatter:['bread','loaf-baguette','croissant','loaf-round'],foods:['bread','croissant','loaf-baguette','loaf-round','muffin','pie','sandwich'],beh:['explode','shield','split']},
+ {n:'ピザ屋「ナポリたわー」',sign:'🍕 PIZZERIA ナポリ',fl:'terracotta',c1:'#b8683e',c2:'#a85c36',wall:0x6a2418,sb:'#2a6a2a',border:['oven','crate_tomatoes','crate_cheese','kitchencounter_straight_A','wall_window_open'],deco:['table_round_A_decorated','table_round_B'],scatter:['pizza-box','pizza','paprika','chair_A'],foods:['pizza','mushroom','paprika','cheese','taco','meat-ribs'],beh:['shoot','explode','summon']},
+ {n:'カフェ「スイーツ天国」',sign:'🍰 Café スイーツ天国',fl:'tile',c1:'#efd0d4',c2:'#e4c2c8',wall:0x5e3044,sb:'#c0507a',border:['wall_window_open','wall_decorated','table_round_A_decorated','pillar_B','fridge_A_decorated'],deco:['table_round_A_decorated','table_round_A_small'],scatter:['cake','cup-coffee','cupcake','chair_B'],foods:['cake','cupcake','donut-sprinkles','donut-chocolate','ice-cream','sundae','waffle','pancakes','cup-coffee','frappe','cookie-chocolate','pudding','strawberry'],beh:['kite','split','summon']},
+ {n:'中華料理「龍飯店」',sign:'🥟 中華料理 龍飯店',fl:'tile',c1:'#9a3a30',c2:'#8c342b',wall:0x3a0e0e,sb:'#c09020',border:['stove_multi_decorated','pillar_B','wall_decorated','kitchencounter_straight_decorated','pot_A_stew'],deco:['table_round_A','table_round_B','stew_pot'],scatter:['steamer','dim-sum','chinese','skewer-vegetables'],foods:['chinese','dim-sum','steamer','skewer-vegetables','eggplant','turkey'],beh:['shield','dash','shoot']},
+ {n:'バーガーショップ「ジャンクたわー」',sign:'🍔 JUNK BURGER',fl:'diner',c1:'#cfe2dc',c2:'#bcd4cc',wall:0x1f4a58,sb:'#d04020',border:['kitchencounter_straight_A','fridge_A','dishrack_plates','stove_single','kitchencounter_sink_backsplash'],deco:['kitchentable_B_large','table_round_A_small'],scatter:['fries','soda','burger-cheese','hot-dog'],foods:['burger-cheese','fries','hot-dog','soda','corn-dog','sandwich','food_burger','popsicle','watermelon'],beh:['dash','explode','kite','summon','shield']}];
+const THEMES=SHOPS;const shopOf=f=>SHOPS[Math.floor((f-1)/5)%SHOPS.length];
+const BEH_UNLOCK={shoot:2,dash:3,kite:4,split:5,explode:6,shield:7,summon:9};
+const BEHC={shoot:0xff9030,kite:0xffe040,dash:0xff3030,split:0x60ff60,explode:0xff2020,shield:0x50a0ff,summon:0xc060ff};
+const _tex={};
+function floorTex(th){const key=th.fl+th.c1;if(_tex[key])return _tex[key];const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');const C1=new THREE.Color(th.c1),C2=new THREE.Color(th.c2);
+ const mix=(t)=>'#'+C1.clone().lerp(C2,t).getHexString();const dark=(col,k)=>'#'+new THREE.Color(col).multiplyScalar(k).getHexString();
+ let r=7;const R=()=>(r=(r*9301+49297)%233280)/233280;
+ if(th.fl==='wood'){for(let y=0;y<256;y+=32){let x=-(R()*128)|0;while(x<256){const w=96+(R()*96|0);g.fillStyle=mix(R());g.fillRect(x,y,w,32);g.fillStyle='rgba(0,0,0,0.05)';for(let i=0;i<5;i++)g.fillRect(x,y+4+R()*24,w,1);g.fillStyle=dark(th.c2,0.85);g.fillRect(x,y,2,32);x+=w}g.fillStyle=dark(th.c2,0.82);g.fillRect(0,y,256,2)}}
+ else if(th.fl==='tatami'){g.fillStyle=th.c1;g.fillRect(0,0,256,256);g.fillStyle='rgba(80,70,20,0.07)';for(let x=0;x<256;x+=4)g.fillRect(x,0,1,256);g.fillStyle=th.c2;g.fillRect(0,0,256,6);g.fillRect(0,128,128,6);g.fillRect(128,0,6,256);g.fillStyle='#5a6a4a';g.fillRect(0,0,256,3);g.fillRect(128,0,3,256)}
+ else{const n=th.fl==='diner'?4:th.fl==='terracotta'?4:2,s=256/n,gr=th.fl==='terracotta'?5:3;g.fillStyle=dark(th.c2,0.88);g.fillRect(0,0,256,256);
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){g.fillStyle=th.fl==='diner'?((x+y)%2?th.c1:th.c2):mix(R()*0.8);g.fillRect(x*s+gr/2,y*s+gr/2,s-gr,s-gr);g.fillStyle='rgba(255,255,255,0.05)';g.fillRect(x*s+gr/2,y*s+gr/2,s-gr,4)}}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return _tex[key]=t}
+function makeSign(th){const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.fillStyle=th.sb;g.beginPath();g.roundRect(4,4,504,120,22);g.fill();g.lineWidth=8;g.strokeStyle='#fff3d0';g.stroke();g.fillStyle='#fff';g.font='bold 54px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(th.sign,256,68);
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(8,2),new THREE.MeshBasicMaterial({map:t,transparent:true}));m.userData.own=1;return m}
+const _fs={};function fsize(name){if(_fs[name])return _fs[name];const b=new THREE.Box3();for(const p of propParts(name)){p.geo.computeBoundingBox();b.union(p.geo.boundingBox.clone().applyMatrix4(p.m))}const s=b.getSize(new THREE.Vector3());return _fs[name]=Math.max(s.x,s.y,s.z)||1}
+function foodIM(name){const k='F_'+name;return IM[k]||(IM[k]=new IMesh(propParts(name),120))}
+// collection log
+let ZK={};try{ZK=JSON.parse(localStorage.getItem('rsurv_zukan'))||{}}catch(e){}
+function zkSave(){try{localStorage.setItem('rsurv_zukan',JSON.stringify(ZK))}catch(e){}}
+function showZukan(){const n=FOODK.filter(k=>ZK[k]).length;$('zkCount').textContent=n+' / '+FOODK.length;$('zkList').innerHTML=FOODK.map(k=>ZK[k]?`<div class="zi">🍽️ ${FOODJ[k]}<small>×${ZK[k]}</small></div>`:'<div class="zi no">？？？</div>').join('');$('zk').classList.add('on')}
+// fleeing food
+let FOODC=null,foodT=12;
+function spawnFoodC(){const sh=shopOf(floor);for(let i=0;i<30;i++){const a=Math.random()*6.28,d=120+Math.random()*140,x=P.x+Math.cos(a)*d,y=P.y+Math.sin(a)*d;if(solid((x/T)|0,(y/T)|0)||solid(((x+6)/T)|0,((y+6)/T)|0)||solid(((x-6)/T)|0,((y-6)/T)|0))continue;
+  const name=Math.random()<0.7?sh.foods[(Math.random()*sh.foods.length)|0]:FOODK[(Math.random()*FOODK.length)|0];FOODC={x,y,name,life:30,wx:0,wy:0,wt:0};fx.push({type:'text',txt:'✨ '+FOODJ[name]+'が逃げ回っている！',life:2.2});return}}
+function updFood(dt){if(!FOODC){if(bossPhase!==2){foodT-=dt;if(foodT<=0){foodT=5;spawnFoodC()}}return}const F=FOODC;F.life-=dt;
+ const dx=F.x-P.x,dy=F.y-P.y,d=Math.hypot(dx,dy)||1;F.wt-=dt;if(F.wt<=0){F.wt=0.6+Math.random();const a=Math.random()*6.28;F.wx=Math.cos(a);F.wy=Math.sin(a)}
+ let vx=F.wx*35,vy=F.wy*35;if(d<110){vx=dx/d*60+F.wx*25;vy=dy/d*60+F.wy*25}moveCirc(F,vx*dt,vy*dt,4);
+ if(d<13){for(const g of gems)g.pull=2;ZK[F.name]=(ZK[F.name]||0)+1;zkSave();SND.play('se_chest',0.7);SND.play('se_lvup',0.5);
+  fx.push({type:'text',txt:'★ '+FOODJ[F.name]+' ゲット！'+(ZK[F.name]===1?' NEW!':''),life:2.5});fx.push({type:'text',txt:'経験値をぜんぶ吸い寄せ！',life:2.2});fx.push({type:'catch',x:F.x,y:F.y,life:0.8});FOODC=null;foodT=25+Math.random()*20;return}
+ if(F.life<=0){fx.push({type:'poof',x:F.x,y:F.y,life:0.3});FOODC=null;foodT=15}}
+// enemy behaviors
+function setBeh(e,b){e.beh=b;e.cd=1+Math.random()*2;e.side=Math.random()<.5?1:-1;
+ if(b==='shield'){e.hp*=3;e.mhp*=3;e.sp*=0.6;e.sc=1.35;e.r+=2;e.xp*=2}else if(b==='summon'){e.hp*=1.6;e.mhp*=1.6;e.sp*=0.6;e.sc=1.2;e.xp*=2}else if(b==='explode'){e.sp*=1.3}else if(b==='split'){e.sc=1.25}}
+function behMove(e,dt,d,dx,dy){const ux=dx/d,uy=dy/d;let vx=ux*e.sp,vy=uy*e.sp;if(!e.beh)return [vx,vy];e.cd-=dt;
+ switch(e.beh){
+ case 'shoot':case 'kite':
+  if(e.beh==='kite'){if(d<85){vx=-ux*e.sp;vy=-uy*e.sp}else if(d<135){vx=-uy*e.sp*0.7*e.side;vy=ux*e.sp*0.7*e.side}}
+  if(e.wind>0){e.wind-=dt;vx=vy=0;if(e.wind<=0){const a=e.wa,sh=shopOf(floor);bullets.push({k:'eb',x:e.x,y:e.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,life:2.5,d:e.dmg*0.7,r:3,enemy:1,food:sh.foods[(Math.random()*sh.foods.length)|0]})}}
+  else if(e.cd<=0&&d<170){e.cd=2.4+Math.random()*1.5;e.wind=0.65;e.wa=Math.atan2(dy,dx);hz.push({k:'l',x:e.x,y:e.y,a:e.wa,len:Math.min(180,d+40),w:5,warn:0.65,t:0,dm:0})}break;
+ case 'dash':
+  if(e.dt>0){e.dt-=dt;vx=e.dvx;vy=e.dvy}else if(e.wind>0){e.wind-=dt;vx=vy=0;if(e.wind<=0){e.dt=0.45;e.dvx=Math.cos(e.wa)*Math.max(200,e.sp*5);e.dvy=Math.sin(e.wa)*Math.max(200,e.sp*5)}}
+  else if(e.cd<=0&&d<120){e.cd=3+Math.random()*2;e.wind=0.6;e.wa=Math.atan2(dy,dx);hz.push({k:'l',x:e.x,y:e.y,a:e.wa,len:110,w:e.r*2+2,warn:0.6,t:0,dm:0})}break;
+ case 'explode':
+  if(e.fuse>0){e.fuse-=dt;vx=vy=0;if(e.fuse<=0){e.hp=0;gems.push({x:e.x,y:e.y,v:e.xp});fx.push({type:'poof',x:e.x,y:e.y,life:0.3})}}else if(d<30){e.fuse=0.85;circ(e.x,e.y,34,0.85,e.dmg*1.5)}break;
+ case 'summon':
+  if(d<90){vx=-ux*e.sp;vy=-uy*e.sp}if(e.cd<=0&&d<200&&enemies.length<MAXE_FLOOR+30){e.cd=5.5;for(let i=0;i<2;i++){const c=spawnEnemy(e.x+(Math.random()-.5)*30,e.y+(Math.random()-.5)*30,undefined,true);if(c)fx.push({type:'poof',x:c.x,y:c.y,life:0.3})}fx.push({type:'summon',x:e.x,y:e.y,life:0.5})}break}
+ return [vx,vy]}
 // ================= state =================
 const SAVE='rsurv_save_v1';
 let hz=[],dpsAcc=0,dpsT=0,chests=[],P,map,MW,MH,floor=1,enemies=[],bullets=[],gems=[],fx=[],stairs=null,entrance,bossPhase=0,bossTimer=0,boss=null,state='title',time=0,spawnT=0,kills=0,deco=[];
@@ -126,21 +178,22 @@ function relView(e){if(e.view){e.view.obj.visible=false;(pools['e_'+e.t.m]||(poo
 // ================= dungeon (restaurant floors) =================
 let levelGroup=null;
 function solid(tx,ty){return tx<0||ty<0||tx>=MW||ty>=MH||map[ty*MW+tx]===1}
-function clearLevel(){for(const e of enemies)relView(e);if(bossView){scene.remove(bossView.obj);bossView=null}if(levelGroup){scene.remove(levelGroup);levelGroup.traverse(o=>{if(o.isInstancedMesh)o.dispose()})}levelGroup=new THREE.Group();scene.add(levelGroup)}
-function buildLevel(){const th=THEMES[Math.floor((floor-1)/5)%4];const B=new Builder();const rnd=a=>a[(Math.random()*a.length)|0];
- const c1=new THREE.Color().setRGB(...th.floor),c2=new THREE.Color().setRGB(...th.floor2);
+function clearLevel(){for(const e of enemies)relView(e);if(bossView){scene.remove(bossView.obj);bossView=null}if(levelGroup){scene.remove(levelGroup);levelGroup.traverse(o=>{if(o.isInstancedMesh)o.dispose();if(o.userData.own){if(!o.isInstancedMesh||o.geometry.type==='BoxGeometry')o.geometry.dispose();if(o.material.map&&!Object.values(_tex).includes(o.material.map))o.material.map.dispose();o.material.dispose()}})}levelGroup=new THREE.Group();scene.add(levelGroup)}
+function buildLevel(){const th=shopOf(floor);const B=new Builder();const rnd=a=>a[(Math.random()*a.length)|0];
+ const MG=12,w=(MW+2*MG)*2,h=(MH+2*MG)*2;const tex=floorTex(th);tex.repeat.set(w/4,h/4);
+ const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,h).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({map:tex,roughness:0.95}));pl.position.set(MW,0,MH);pl.userData.own=1;levelGroup.add(pl);
+ const wallMat=new THREE.MeshStandardMaterial({color:th.wall,roughness:1});const fills=[];
+ scene.background.setHex(th.wall).multiplyScalar(0.6);scene.fog.color.copy(scene.background);
  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const wx=(x*T+8)*K,wz=(y*T+8)*K;
-  if(map[y*MW+x]===0||map[y*MW+x]===2){B.add('floor_kitchen_small',mtx(wx,-0.5,wz),(x+y)%2?c1:c2)}
-  if(map[y*MW+x]===2){B.add('floor_kitchen_small',mtx(wx,-0.5,wz),(x+y)%2?c1:c2);}
   if(map[y*MW+x]===1){let ox=0,oy=0,n=0;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<MW&&yy<MH&&map[yy*MW+xx]!==1){ox+=dx;oy+=dy;n++}}
    let diag=false;if(!n)for(const [dx,dy] of [[1,1],[-1,1],[1,-1],[-1,-1]]){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<MW&&yy<MH&&map[yy*MW+xx]!==1)diag=true}
    if(n||diag){if(n){if(Math.abs(ox)>=Math.abs(oy)){ox=Math.sign(ox);oy=0}else{oy=Math.sign(oy);ox=0}if(!ox&&!oy)oy=1}const ry=n?Math.atan2(ox,oy):0;const pn=rnd(th.border);const isWall=/^wall|pillar/.test(pn);
-    B.add('floor_kitchen_small',mtx(wx,-0.5,wz),c2);
-    if(isWall)B.add(pn,mtx(wx,0,wz,ry,0.5,0.55,0.8));else B.add(pn,mtx(wx,0,wz,ry,1,1,1))}}}
- for(const d of deco){if(d.solid)B.add('floor_kitchen_small',mtx((d.x*T+8)*K,-0.5,(d.y*T+8)*K),c1);if(d.solid)B.add(rnd(th.deco),mtx((d.x*T+8)*K,0,(d.y*T+8)*K,((Math.random()*4)|0)*Math.PI/2,d.s||1));else B.add(rnd(th.scatter),mtx((d.x*T+8)*K+(Math.random()-.5),0,(d.y*T+8)*K+(Math.random()-.5),Math.random()*6.28,0.8))}
+    if(isWall)B.add(pn,mtx(wx,0,wz,ry,0.5,0.55,0.8));else B.add(pn,mtx(wx,0,wz,ry,1,1,1))}else fills.push(wx,wz)}}
+ const box=new THREE.BoxGeometry(2,1.2,2).translate(0,0.6,0);const im=new THREE.InstancedMesh(box,wallMat,fills.length/2);for(let i=0;i<fills.length;i+=2)im.setMatrixAt(i/2,mtx(fills[i],0,fills[i+1]));im.computeBoundingSphere();im.userData.own=1;levelGroup.add(im);
+ for(const [cx,cz,sx,sz] of [[-MG,MH,2*MG,h],[2*MW+MG,MH,2*MG,h],[MW,-MG,2*MW,2*MG],[MW,2*MH+MG,2*MW,2*MG]]){const m=new THREE.Mesh(new THREE.BoxGeometry(sx,1.2,sz).translate(0,0.6,0),wallMat);m.position.set(cx,0,cz);m.userData.own=1;levelGroup.add(m)}
+ for(const d of deco){if(d.solid)B.add(rnd(th.deco),mtx((d.x*T+8)*K,0,(d.y*T+8)*K,((Math.random()*4)|0)*Math.PI/2,d.s||1));else{const n=rnd(th.scatter);const sc=FOODJ[n]||/-/.test(n)?0.9/fsize(n):0.8;B.add(n,mtx((d.x*T+8)*K+(Math.random()-.5),0,(d.y*T+8)*K+(Math.random()-.5),Math.random()*6.28,sc))}}
  B.build(levelGroup);
- // elevator group for stairs
- levelGroup.userData.theme=th}
+ const sg=makeSign(th);sg.position.set(W(entrance.x),3.4,W(entrance.y)-3.5);sg.rotation.x=-0.5;levelGroup.add(sg)}
 let elevator=null;
 function makeElevator(){if(elevator)scene.remove(elevator);elevator=new THREE.Group();const B=new Builder();B.add('door_A',mtx(-0.8,0,-0.9));B.add('door_B',mtx(0.8,0,-0.9,Math.PI));B.build(elevator);
  const pad=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,0.12,24),new THREE.MeshBasicMaterial({color:0xffd84a}));pad.position.y=0.06;elevator.add(pad);
@@ -170,12 +223,12 @@ function genFloor(){
   for(const r of rooms){if(r===a)continue;const n=3+floor+(Math.random()*4|0);for(let i=0;i<n;i++)spawnEnemy((r.x+1+Math.random()*(r.w-2))*T,(r.y+1+Math.random()*(r.h-2))*T)}}
  // deco solid cells must not get border props: mark them temporarily
  for(const d of deco)if(d.solid)map[d.y*MW+d.x]=4;
- buildLevel();for(const d of deco)if(d.solid)map[d.y*MW+d.x]=1;
+ FOODC=null;foodT=10+Math.random()*8;buildLevel();for(const d of deco)if(d.solid)map[d.y*MW+d.x]=1;
  // solid() treats 1 only; make deco solid count: (value 1)
  P.x=entrance.x;P.y=entrance.y;P.hp=P.mhp;floorBgm();P.inv=1.5;spawnT=0;time=0;save();
 }
-function spawnEnemy(x,y,forceIdx){if(solid((x/T)|0,(y/T)|0))return;const mx=Math.min(ROSTER.length-1,1+floor),mn=Math.max(0,mx-5);const t=ROSTER[forceIdx??(mn+Math.floor(Math.random()*(mx-mn+1)))];const k=1+floor*0.22;
- const e={x,y,t,hp:t.hp*k,mhp:t.hp*k,sp:t.sp*(1+floor*0.015),dmg:t.dmg*(1+floor*0.1),xp:t.xp,r:t.r,hit:0,kx:0,ky:0,ph0:Math.random()*6};enemies.push(e);return e}
+function spawnEnemy(x,y,forceIdx,noBeh){if(solid((x/T)|0,(y/T)|0))return;const mx=Math.min(ROSTER.length-1,1+floor),mn=Math.max(0,mx-5);const t=ROSTER[forceIdx??(mn+Math.floor(Math.random()*(mx-mn+1)))];const k=1+floor*0.22;
+ const e={x,y,t,hp:t.hp*k,mhp:t.hp*k,sp:t.sp*(1+floor*0.015),dmg:t.dmg*(1+floor*0.1),xp:t.xp,r:t.r,hit:0,kx:0,ky:0,ph0:Math.random()*6};if(!noBeh&&Math.random()<Math.min(0.45,0.05+0.05*floor)){const o=shopOf(floor).beh.filter(b=>BEH_UNLOCK[b]<=floor);if(o.length)setBeh(e,o[(Math.random()*o.length)|0])}enemies.push(e);return e}
 function spawnBoss(){const tier=Math.floor(floor/5)-1,b=BOSSES[tier%4],lap=Math.floor(tier/4);const base=(600+tier*700)*(1+lap*2)*4;const dps=dpsAcc/Math.max(20,dpsT);const hp=Math.round(Math.max(base,dps*1.2*80));
  boss={x:15*T+8,y:6*T,t:{},bd:b,hp,mhp:hp,sp:22+tier*3,dmg:(26+tier*10)*(1+lap*0.8),xp:50,r:12+tier,hit:0,kx:0,ky:0,isBoss:1,atk:2.5,tier:tier%4,lap,ph:1,ai:null,bud:0};boss.bud=boss.mhp/65*2;enemies.push(boss);bossPhase=2;SND.play('se_boss',0.7);floorBgm();
  const md=M['b_'+b.m];if(md){bossView=makeView('b_'+b.m,'Walk');bossView.obj.scale.setScalar(b.h);bossView.obj.traverse(o=>{if(o.isMesh)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.color&&m.color.multiply(new THREE.Color(b.col)))})}
@@ -228,13 +281,13 @@ function updHz(dt){for(let i=hz.length-1;i>=0;i--){const h=hz[i];h.t+=dt;if(h.fo
   if(h.sweep){h.x=h.boss.x;h.y=h.boss.y;h.a=h.sweep.ang;if(h.t>2.8)h.dead=1}
   else if(h.t>=h.warn&&!h.hit){h.hit=1;if(h.k==='c'){if((P.x-h.x)**2+(P.y-h.y)**2<h.r*h.r)hitP(h.dm);fx.push({type:'boom',x:h.x,y:h.y,r:h.r,life:0.3})}h.dead=h.k==='c'||h.k==='ring'||h.k==='l'}
   if(h.dead){hz[i]=hz[hz.length-1];hz.pop()}}}
-function hurt(e,d,kx,ky,src){if(e.hp<=0)return;d*=dmgMul();if(e.isBoss){if(src==='aura')d*=0.3;if(e.ai&&e.ai.st==='leap')return;d=Math.min(d,e.bud);e.bud-=d;if(d<=0)return}else if(bossPhase===1)dpsAcc+=d;e.hp-=d;if(P.sp.lifesteal)P.hp=Math.min(P.mhp,P.hp+d*0.012*P.sp.lifesteal);e.hit=0.1;SND.play('se_hit',0.25,0.07);if(!e.isBoss){e.kx+=kx||0;e.ky+=ky||0}
+function hurt(e,d,kx,ky,src){if(e.hp<=0)return;d*=dmgMul();if(e.isBoss){if(src==='aura')d*=0.3;if(e.ai&&e.ai.st==='leap')return;d=Math.min(d,e.bud);e.bud-=d;if(d<=0)return}else{if(e.beh==='shield')d*=0.5;if(bossPhase===1)dpsAcc+=d}e.hp-=d;if(P.sp.lifesteal)P.hp=Math.min(P.mhp,P.hp+d*0.012*P.sp.lifesteal);e.hit=0.1;SND.play('se_hit',0.25,0.07);if(!e.isBoss){e.kx+=kx||0;e.ky+=ky||0}
  if(fx.length<150)fx.push({type:'num',x:e.x,y:e.y-6,txt:Math.round(d),life:0.5});
  if(e.hp<=0){kills++;SND.play('se_kill',0.3,0.05);if(fx.length<150)fx.push({type:'poof',x:e.x,y:e.y,life:0.3});
   if(e.isBoss){for(let i=0;i<30;i++)gems.push({x:e.x+(Math.random()-.5)*40,y:e.y+(Math.random()-.5)*40,v:5});bossPhase=3;SND.bgm('bgm_floor');SND.play('se_lvup',0.6);stairs={x:15*T+8,y:15*T+8};boss=null;chests.push({x:15*T+8,y:11*T+8});
    if(bossView){playAnim(bossView,'Death',true);const bv=bossView;setTimeout(()=>{scene.remove(bv.obj)},2500);bossView=null}
    fx.push({type:'text',txt:'撃破！エレベーターが出現',life:3});hz.length=0;for(const b of bullets)if(b.enemy)b.life=0}
-  else{gems.push({x:e.x,y:e.y,v:e.xp});if(Math.random()<0.015)gems.push({x:e.x,y:e.y,heal:1})}}}
+  else{if(e.beh==='split'&&!e.child)for(let i=0;i<2;i++){const c=spawnEnemy(e.x+(i?6:-6),e.y,e.t.idx,true);if(c){c.hp=c.mhp=e.mhp*0.35;c.sc=0.7;c.child=1;c.kx=(i?40:-40)}}gems.push({x:e.x,y:e.y,v:e.xp});if(Math.random()<0.015)gems.push({x:e.x,y:e.y,heal:1})}}}
 function nearestEnemy(r){let best=null,bd=r*r;near(P.x,P.y,r,e=>{const d=(e.x-P.x)**2+(e.y-P.y)**2;if(d<bd){bd=d;best=e}});return best}
 function fireWeapons(dt){const haste=Math.pow(0.92,stat('haste'));
  for(const k in P.w){const L=P.w[k];P.cd[k]=(P.cd[k]||0)-dt;
@@ -284,10 +337,10 @@ function update(dt){time+=dt;
   if(bossTimer<=0){bossTimer=0;spawnBoss()}}
  else if(bossPhase===2){spawnT-=dt;if(spawnT<=0&&enemies.length<MAXE_BOSS){spawnT=boss&&boss.ph===2?0.8:1.2;const a=Math.random()*6.28;spawnEnemy(Math.max(3*T,Math.min((MW-3)*T,P.x+Math.cos(a)*150)),Math.max(3*T,Math.min((MH-3)*T,P.y+Math.sin(a)*190)))}}
  else if(bossPhase===0){spawnT-=dt;if(spawnT<=0&&enemies.length<MAXE_FLOOR){spawnT=Math.max(1,4-floor*0.1);for(let i=0;i<3;i++){const a=Math.random()*6.28,x=P.x+Math.cos(a)*170,y=P.y+Math.sin(a)*210;spawnEnemy(x,y)}}}
- if(bossPhase===1)dpsT+=dt;updHz(dt);buildGrid();fireWeapons(dt);
+ if(bossPhase===1)dpsT+=dt;updFood(dt);updHz(dt);buildGrid();fireWeapons(dt);
  for(const e of enemies){const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy)||1;e.hit-=dt;
   if(d>400&&!e.isBoss)continue;
-  let vx=dx/d*e.sp,vy=dy/d*e.sp;
+  let [vx,vy]=e.isBoss?[0,0]:behMove(e,dt,d,dx,dy);
   if(e.isBoss){const m=bossAI(e,dt,d,dx,dy);vx=m[0];vy=m[1]}
   near(e.x,e.y,10,o=>{if(o!==e){const sx=e.x-o.x,sy=e.y-o.y,sd=sx*sx+sy*sy;if(sd<64&&sd>0.01){const s=1/Math.sqrt(sd);vx+=sx*s*25;vy+=sy*s*25}}});
   vx+=e.kx*8;vy+=e.ky*8;e.kx*=0.85;e.ky*=0.85;
@@ -300,12 +353,12 @@ function update(dt){time+=dt;
    near(b.x,b.y,b.r+12,e=>{if(b.life<=0||e.hp<=0)return;if((e.x-b.x)**2+(e.y-b.y)**2<(b.r+e.r)**2){if(b.hitset){if(b.hitset.has(e))return;b.hitset.add(e)}hurt(e,b.d,b.vx*0.05,b.vy*0.05);if(--b.pierce<=0)b.life=0}})}
   if(b.life<=0){bullets[i]=bullets[bullets.length-1];bullets.pop()}}
  const mag=(24*(1+0.4*stat('magnet')))**2;
- for(let i=gems.length-1;i>=0;i--){const g=gems[i],dx=P.x-g.x,dy=P.y-g.y,d2=dx*dx+dy*dy;if(d2<mag||g.pull){g.pull=1;const d=Math.sqrt(d2)||1;g.x+=dx/d*200*dt;g.y+=dy/d*200*dt}
+ for(let i=gems.length-1;i>=0;i--){const g=gems[i],dx=P.x-g.x,dy=P.y-g.y,d2=dx*dx+dy*dy;if(d2<mag||g.pull){g.pull=g.pull||1;const d=Math.sqrt(d2)||1;const gs=g.pull===2?Math.min(900,(g.gs=(g.gs||250)+dt*500)):200;g.x+=dx/d*gs*dt;g.y+=dy/d*gs*dt}
   if(d2<64){SND.play('se_xp',0.15,0.04);if(g.heal)P.hp=Math.min(P.mhp,P.hp+30);else gainXP(g.v);gems[i]=gems[gems.length-1];gems.pop()}}
  if(gems.length>400){let s=0;for(const g of gems.splice(0,100))s+=g.v||0;gems.push({x:P.x+20,y:P.y,v:s})}
  for(let i=fx.length-1;i>=0;i--){fx[i].life-=dt;if(fx[i].life<=0)fx.splice(i,1)}
  for(const c of chests)if(!c.open&&Math.hypot(P.x-c.x,P.y-c.y)<14){c.open=1;openChest();break}
- if(stairs&&Math.hypot(P.x-stairs.x,P.y-stairs.y)<10){SND.play('se_stairs',0.6);floor++;genFloor();fx.push({type:'text',txt:floor+'F '+THEMES[Math.floor((floor-1)/5)%4].n+(floor%5===0?' ボスフロア！3分耐えろ！':''),life:2.5})}
+ if(stairs&&Math.hypot(P.x-stairs.x,P.y-stairs.y)<10){SND.play('se_stairs',0.6);floor++;genFloor();fx.push({type:'text',txt:floor+'F '+shopOf(floor).n+(floor%5===0?' ボスフロア！3分耐えろ！':''),life:2.5})}
  if(P.hp<=0&&(P.sp.revive||0)>P.revUsed){P.revUsed++;P.hp=P.mhp*0.5;P.inv=2;fx.push({type:'text',txt:'不死鳥の羽で復活！',life:2});near(P.x,P.y,80,e=>hurt(e,50))}
  if(P.hp<=0){P.hp=0;state='dead';$('dead').classList.add('on');showBtns(false)}
  if(pendingLv>0&&state==='play')showLevel();
@@ -329,19 +382,21 @@ function render(dt){const px=W(P.x),pz=W(P.y);camT.lerp(_v.set(px,0,pz),Math.min
  // enemies
  const vis2=280*280;
  for(const e of enemies){if(e.isBoss)continue;const dx=e.x-P.x,dy=e.y-P.y,d2=dx*dx+dy*dy,vis=d2<vis2;const ex=W(e.x),ez=W(e.y),ry=Math.atan2(-dx,-dy);
-  if(e.t.food){if(!vis)continue;const b=Math.abs(Math.sin(time*8+e.ph0));IM['f_'+e.t.food].put(mtx(ex,b*0.5,ez,ry+Math.sin(time*6+e.ph0)*0.3,1.4*(1+0.15*(1-b)),1.4*(0.85+0.3*b),1.4*(1+0.15*(1-b))),e.hit>0?WHITE3:ONE);IM.shadow.put(mtx(ex,0.03,ez,0,0.5));continue}
+  const esc=e.sc||1;if(vis&&e.beh){const bc=e.beh==='explode'&&e.fuse>0?((time*12|0)%2?0xffffff:0xff2020):BEHC[e.beh];prim('ring',ex,ez,0.05,0.8*esc,0.8*esc,0,bc,0.85);if(e.beh==='shield')prim('ring',ex,ez,0.9,1.0*esc,1.0*esc,0,0x60b0ff,0.6)}
+  if(e.t.food){if(!vis)continue;const b=Math.abs(Math.sin(time*8+e.ph0));IM['f_'+e.t.food].put(mtx(ex,b*0.5,ez,ry+Math.sin(time*6+e.ph0)*0.3,1.4*esc*(1+0.15*(1-b)),1.4*esc*(0.85+0.3*b),1.4*esc*(1+0.15*(1-b))),e.hit>0||e.fuse>0&&(time*12|0)%2?WHITE3:ONE);IM.shadow.put(mtx(ex,0.03,ez,0,0.5));continue}
   if(!vis){if(e.view)relView(e);continue}
-  if(!e.view)e.view=getView(e.t);const o=e.view.obj;o.position.set(ex,0,ez);o.rotation.y=ry;tint(e.view,e.hit>0?0.9:0,e.hit>0?0.9:0,e.hit>0?0.9:0);if(e.view.mixer)e.view.mixer.update(dt*(state==='play'?SPD:0));IM.shadow.put(mtx(ex,0.03,ez,0,0.55))}
+  if(!e.view)e.view=getView(e.t);const o=e.view.obj;o.position.set(ex,0,ez);o.rotation.y=ry;o.scale.setScalar(esc);const fl=e.hit>0?0.9:0,fr=e.fuse>0&&(time*12|0)%2?1:fl;tint(e.view,fr,fl,fl);if(e.view.mixer)e.view.mixer.update(dt*(state==='play'?SPD:0));IM.shadow.put(mtx(ex,0.03,ez,0,0.55))}
  // boss
  if(boss&&bossView){const e=boss,a=e.ai;let x=e.x,y=e.y,h=0;if(a&&a.st==='leap'&&!a.f){const t=Math.min(1,a.t/1.1);x=a.sx+(a.tx-a.sx)*t;y=a.sy+(a.ty-a.sy)*t;h=Math.sin(t*Math.PI)*9}
   const o=bossView.obj;o.position.set(W(x),h,W(y));const dx=P.x-x,dy=P.y-y;o.rotation.y=Math.atan2(dx,dy)+(a&&a.st==='spin'&&a.t>0.6?time*20:0);
   const an=!a||a.st==='walk'||a.st==='summon'||a.st==='meteor'?'Walk':a.st==='charge'?(a.t<0.8?'Idle':'Run'):a.st==='leap'?'Jump':a.st==='spin'?'Weapon':'Punch';playAnim(bossView,an);
   if(e.hit>0)tint(bossView,0.8,0.8,0.8);else if(e.ph===2)tint(bossView,0.35+0.25*Math.sin(time*10),0,0);else tint(bossView,0,0,0);bossView.mixer&&bossView.mixer.update(dt*(state==='play'?SPD:0));
   IM.shadow.put(mtx(W(x),0.03,W(y),0,W(e.r)*1.3))}else if(bossView&&bossView.mixer)bossView.mixer.update(dt);
+ if(FOODC){const F=FOODC,fs=1.4/fsize(F.name),hop=Math.abs(Math.sin(time*7))*0.8;foodIM(F.name).put(mtx(W(F.x),0.3+hop,W(F.y),time*3,fs));prim('ring',W(F.x),W(F.y),0.06,1.1+Math.sin(time*6)*0.15,1.1+Math.sin(time*6)*0.15,0,0xff70c0,0.9);prim('disc',W(F.x),W(F.y),0.05,0.9,0.9,0,0xffffff,0.25);IM.shadow.put(mtx(W(F.x),0.03,W(F.y),0,0.5))}
  // gems
  for(const g of gems){const s=Math.sin(time*5+g.x)*0.15;if(g.heal)IM.burger.put(mtx(W(g.x),0.2+s,W(g.y),time*2,0.6));else IM.gem.put(mtx(W(g.x),0.45+s,W(g.y),time*3,1,1.3,1),GEMC[g.v>=5?2:g.v>=2?1:0])}
  // bullets
- for(const b of bullets){if(b.enemy)IM.eb.put(mtx(W(b.x),0.9,W(b.y)));else if(b.k==='axe'){_e.set(b.rot,Math.atan2(b.vx,b.vy),0);_q.setFromEuler(_e);IM.knife.put(new THREE.Matrix4().compose(_v.set(W(b.x),1,W(b.y)),_q,_s.set(1.6,1.6,1.6)))}else IM.bolt.put(mtx(W(b.x),0.9,W(b.y)),b.fam?GEMC[2]:ONE)}
+ for(const b of bullets){if(b.food){const fs=0.9/fsize(b.food);foodIM(b.food).put(mtx(W(b.x),0.9,W(b.y),time*8,fs));IM.eb.put(mtx(W(b.x),0.9,W(b.y),0,0.5))}else if(b.enemy)IM.eb.put(mtx(W(b.x),0.9,W(b.y)));else if(b.k==='axe'){_e.set(b.rot,Math.atan2(b.vx,b.vy),0);_q.setFromEuler(_e);IM.knife.put(new THREE.Matrix4().compose(_v.set(W(b.x),1,W(b.y)),_q,_s.set(1.6,1.6,1.6)))}else IM.bolt.put(mtx(W(b.x),0.9,W(b.y)),b.fam?GEMC[2]:ONE)}
  // orbs
  if(P.w.orb){const L=P.w.orb,n=1+L,R=(28+L*2)*areaMul();for(let i=0;i<n;i++){const a=P.orbA+i*Math.PI*2/n;IM.plate.put(mtx(W(P.x+Math.cos(a)*R),0.8,W(P.y+Math.sin(a)*R),a*3,1.3))}}
  if(P.w.aura){const R=(26+P.w.aura*5)*areaMul();prim('disc',px,pz,0.06,W(R),W(R),0,0xfff080,0.18+0.06*Math.sin(time*6));prim('ring',px,pz,0.07,W(R),W(R),0,0xffe060,0.5)}
@@ -358,6 +413,8 @@ function render(dt){const px=W(P.x),pz=W(P.y);camT.lerp(_v.set(px,0,pz),Math.min
   else if(f.type==='zap'){const dx=f.x2-f.x,dy=f.y2-f.y;prim('rect',W(f.x),W(f.y),1.0,W(Math.hypot(dx,dy)),0.25,-Math.atan2(dy,dx),0xffff80,0.95)}
   else if(f.type==='beam'){prim('rect',W(f.x),W(f.y),1.0,W(f.l),W(f.w),-f.a,0xffffc8,f.life*4)}
   else if(f.type==='boom'){const r=W(f.r)*(1.2-f.life);prim('disc',W(f.x),W(f.y),0.1,r,r,0,0xff8c1e,Math.min(0.9,f.life*2.5))}
+  else if(f.type==='catch'){const t=0.8-f.life;for(let i=0;i<3;i++){const r=0.5+t*(8+i*4);prim('ring',W(f.x),W(f.y),0.2+i*0.1,r,r,0,[0xffe060,0xff70c0,0x80ffff][i],f.life)}}
+  else if(f.type==='summon'){const r=0.5+(0.5-f.life)*5;prim('ring',W(f.x),W(f.y),0.15,r,r,0,0xc060ff,f.life*2)}
   else if(f.type==='poof'){const r=0.4+(0.3-f.life)*4;prim('ring',W(f.x),W(f.y),0.3,r,r,0,0xffffff,f.life*3)}}
  for(const k in IM)IM[k].end();primEnd();
  renderer.render(scene,camera);drawHUD()}
@@ -368,7 +425,7 @@ function drawHUD(){const w=innerWidth,h=innerHeight;hx.setTransform(DPR,0,0,DPR,
  let ty=h*0.3;for(const f of fx){if(f.type==='text'){hx.font='bold 20px sans-serif';hx.fillStyle='#000';hx.fillText(f.txt,w/2+2,ty+2);hx.fillStyle='#ffd84a';hx.fillText(f.txt,w/2,ty);ty+=28}else if(f.type==='flash'){hx.fillStyle='rgba(255,0,0,.22)';hx.fillRect(0,0,w,h)}}
  // offscreen markers
  const mark=(x,y,col)=>{const [sx,sy]=project(x,y,0.5);if(sx>10&&sx<w-10&&sy>60&&sy<h-10)return;const cx_=Math.max(14,Math.min(w-14,sx)),cy_=Math.max(70,Math.min(h-14,sy));hx.fillStyle=col;hx.beginPath();hx.arc(cx_,cy_,7,0,7);hx.fill();hx.strokeStyle='#000';hx.stroke()};
- for(const c of chests)if(!c.open)mark(c.x,c.y,'#ff9a20');if(stairs)mark(stairs.x,stairs.y,'#60ffff');
+ for(const c of chests)if(!c.open)mark(c.x,c.y,'#ff9a20');if(FOODC)mark(FOODC.x,FOODC.y,'#ff70c0');if(stairs)mark(stairs.x,stairs.y,'#60ffff');
  if(joy){let dx=joy.x-joy.sx,dy=joy.y-joy.sy;const l=Math.hypot(dx,dy),m=50;if(l>m){dx*=m/l;dy*=m/l}hx.strokeStyle='rgba(255,255,255,.5)';hx.lineWidth=2;hx.beginPath();hx.arc(joy.sx,joy.sy,m,0,7);hx.stroke();hx.fillStyle='rgba(255,255,255,.45)';hx.beginPath();hx.arc(joy.sx+dx,joy.sy+dy,20,0,7);hx.fill()}
  hx.textAlign='left';hx.fillStyle='#222';hx.fillRect(0,0,w,6);hx.fillStyle='#4af';hx.fillRect(0,0,w*P.xp/P.nx,6);
  const y0=12+top;hx.fillStyle='#400';hx.fillRect(8,y0,130,12);hx.fillStyle='#e33';hx.fillRect(8,y0,130*Math.max(0,P.hp)/P.mhp,12);hx.strokeStyle='#fff';hx.lineWidth=1;hx.strokeRect(8,y0,130,12);
@@ -407,13 +464,13 @@ let inited=false;
 function startGame(cont){if(state==='play'||!READY)return;if(!inited){inited=true;initIM();makeElevator()}
  const s=cont&&load();P=newPlayer();floor=1;if(s){floor=s.floor||1;Object.assign(P,s.P);P.w=P.w||{bolt:1};P.st=P.st||{};P.sp=P.sp||{};P.cd={}}pendingLv=0;
  if(!playerView)playerView=makeView('player','Idle');genFloor();camT.set(W(P.x),0,W(P.y));
- fx.push({type:'text',txt:floor+'F '+THEMES[Math.floor((floor-1)/5)%4].n+(floor%5===0?' ボスフロア！3分耐えろ！':''),life:2.5});
+ fx.push({type:'text',txt:floor+'F '+shopOf(floor).n+(floor%5===0?' ボスフロア！3分耐えろ！':''),life:2.5});
  $('title').classList.remove('on');showBtns(true);state='play';last=performance.now()}
 function tap(el,fn){let t=0;const h=e=>{const n=Date.now();if(n-t<400)return;t=n;try{fn()}catch(err){console.error(err);const d=$('err');d.style.display='block';d.textContent='エラー: '+err.message}};el.addEventListener('click',h);el.addEventListener('touchend',e=>{h(e);if(e.cancelable)e.preventDefault()})}
 tap($('bNew'),()=>startGame(false));tap($('bCont'),()=>startGame(true));
 function togglePause(){if(state==='play'){state='pause';$('pz').classList.add('on')}else if(state==='pause'){state='play';$('pz').classList.remove('on');last=performance.now()}}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')togglePause()});
-document.querySelectorAll('.bSnd').forEach(b=>tap(b,()=>SND.toggle()));tap($('bCred'),()=>$('cred').classList.add('on'));tap($('bCredX'),()=>$('cred').classList.remove('on'));
+document.querySelectorAll('.bSnd').forEach(b=>tap(b,()=>SND.toggle()));tap($('bZk'),showZukan);tap($('bZk2'),showZukan);tap($('bZkX'),()=>$('zk').classList.remove('on'));tap($('bCred'),()=>$('cred').classList.add('on'));tap($('bCredX'),()=>$('cred').classList.remove('on'));
 document.querySelectorAll('.spdB').forEach(b=>tap(b,cycleSpd));spdLabel();
 tap($('bTre'),()=>{$('tre').classList.remove('on');state='play';last=performance.now()});tap($('pause'),togglePause);tap($('bRes'),togglePause);
 tap($('bTitle'),()=>{save();$('pz').classList.remove('on');showBtns(false);state='title';SND.bgm('bgm_title');$('bCont').style.display='';$('title').classList.add('on')});
@@ -421,4 +478,4 @@ tap($('bRetry'),()=>{$('dead').classList.remove('on');if(playerView)playerView.c
 // title backdrop
 camera.position.set(0,10,14);camera.lookAt(0,0,0);
 loadAll();
-window.__dbg={gainXP,get boss(){return boss},scene,THREE,camera,get pv(){return playerView},M,get P(){return P},get enemies(){return enemies},setFloor(f){floor=f;genFloor()},get state(){return state},SND,get SPD(){return SPD},get hz(){return hz},get chests(){return chests},get bossTimer(){return bossTimer},set bossTimer(v){bossTimer=v},get boss(){return boss},get READY(){return READY},openChest,get stairs(){return stairs},renderer,get floor(){return floor}};
+window.__dbg={get FOODC(){return FOODC},set foodT(v){foodT=v},get gems(){return gems},ZK,gainXP,get boss(){return boss},scene,THREE,camera,get pv(){return playerView},M,get P(){return P},get enemies(){return enemies},setFloor(f){floor=f;genFloor()},get state(){return state},SND,get SPD(){return SPD},get hz(){return hz},get chests(){return chests},get bossTimer(){return bossTimer},set bossTimer(v){bossTimer=v},get boss(){return boss},get READY(){return READY},openChest,get stairs(){return stairs},renderer,get floor(){return floor}};
