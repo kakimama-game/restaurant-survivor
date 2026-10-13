@@ -14,7 +14,12 @@ h1{font-size:34px;color:#ffd84a;text-shadow:3px 3px #a02,0 0 12px #f80;margin:0 
 #spd{position:fixed;right:70px;top:calc(8px + env(safe-area-inset-top));z-index:4;min-width:0;padding:6px 10px;font-size:16px;margin:0;display:none}
 #pause{position:fixed;right:8px;top:calc(8px + env(safe-area-inset-top));z-index:4;min-width:0;padding:6px 14px;font-size:16px;margin:0;display:none}
 #title{background:radial-gradient(#5a2a14ee,#1a0c06ee)}
-#zkList{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:400px;width:100%}.zi{background:#5a3020;border:2px solid #ffd84a;border-radius:8px;padding:6px 2px;font-size:12px}.zi small{display:block;opacity:.7}.zi.no{border-color:#666;color:#888;background:#2a1a10}
+#zkList{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:420px;width:100%}
+.zi{min-width:0;margin:0;padding:6px 2px 4px;font-size:12px;background:linear-gradient(#7a4028,#5a2e1c);border:2px solid #ffd84a;border-radius:12px;box-shadow:0 4px 0 #2a140a,0 6px 10px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;transition:transform .08s}
+.zi:active{transform:translateY(3px) scale(.96);box-shadow:0 1px 0 #2a140a}
+.zi img{width:64px;height:64px;display:block}.zi span{font-weight:bold;line-height:1.2}.zi small{opacity:.75;font-weight:normal}
+.zi.no{border-color:#5a4a40;background:#2a1a10;color:#887}
+.shake{animation:sh .35s}@keyframes sh{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 #err{position:fixed;left:0;right:0;bottom:0;z-index:9;color:#f88;font-size:12px;background:#000c;display:none;padding:4px}
 </style></head><body>
 <canvas id="gl"></canvas><canvas id="hud"></canvas>
@@ -38,6 +43,7 @@ h1{font-size:34px;color:#ffd84a;text-shadow:3px 3px #a02,0 0 12px #f80;margin:0 
 <div class="ov" id="pz"><h2>ポーズ</h2><button id="bRes">つづける</button><button class="spdB" id="spd2">»1x</button><button id="bZk2">📖 ごはん図鑑</button><button class="bSnd">🔊 サウンド: ON</button><button id="bTitle">タイトルへ</button></div>
 <div class="ov" id="dead"><h2 style="color:#f55">やられた…</h2><p>何も失わずにこの階の入口から再挑戦！</p><button id="bRetry">再挑戦</button></div>
 <div class="ov" id="zk" style="background:#1e120a;justify-content:flex-start;overflow:auto;z-index:7"><h2 style="margin-bottom:0">📖 ごはん図鑑</h2><p>逃げ回るごちそうをつかまえよう！ <b id="zkCount"></b></p><div id="zkList"></div><button id="bZkX">もどる</button></div>
+<div class="ov" id="fv" style="background:#1e120a;z-index:8;justify-content:flex-start;padding-top:calc(16px + env(safe-area-inset-top))"><h2 id="fvName" style="color:#ffd84a;margin:4px"></h2><div id="fvCnt" style="font-size:14px;opacity:.85"></div><div id="fvBox" style="width:100%;max-width:480px;flex:1;min-height:240px;margin:8px 0;border-radius:14px;overflow:hidden;border:2px solid #6a4030"></div><div style="font-size:12px;opacity:.7">ドラッグで回転・ピンチ／ホイールで拡大</div><button id="bFvX">とじる</button></div>
 <div id="err"></div>
 <script>
 window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent='エラー: '+(e.message||e)});
