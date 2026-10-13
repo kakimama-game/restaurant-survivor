@@ -7,6 +7,7 @@
 |---|---|---|---|---|---|---|
 | 3Dモデル（レストラン） | KayKit Restaurant Bits 1.0（無料版のみ / EXTRAは不使用） | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/restaurant-bits | https://github.com/KayKit-Game-Assets/KayKit-Restaurant-Bits-1.0 | assets/models/restaurant.glb |
 | 3Dモデル（主人公） | KayKit Adventurers Character Pack 1.0 (Knight) | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/kaykit-adventurers | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 | assets/models/player.glb |
+| 3Dモデル（骸骨の敵） | KayKit Character Pack: Skeletons 1.0 | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/kaykit-skeletons | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0 | assets/models/e_Skeleton_*.glb |
 | 3Dモデル（敵・ボス） | Ultimate Monsters | Quaternius | CC0 1.0 | https://quaternius.com/packs/ultimatemonsters.html | 公式ページのGoogle Driveリンク | assets/models/e_*.glb, b_*.glb |
 | 3Dモデル（料理） | Food Kit 2.0 | Kenney | CC0 1.0 | https://kenney.nl/assets/food-kit | 公式ページのzip | assets/models/foods.glb |
 | BGM | 5 Chiptunes (Action) | Juhani Junkala | CC0 1.0 | https://opengameart.org/content/5-chiptunes-action | ダンジョンサバイバーから流用 | assets/audio/bgm_* |

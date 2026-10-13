@@ -18,7 +18,7 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);D
 addEventListener('resize',resize);resize();
 // ================= assets =================
 const loader=new GLTFLoader();
-const EN_MODELS=['GreenBlob','PinkBlob','Mushnub','Chicken','Pigeon','Cactoro','Fish','Dog','Cat','Wizard','Ghost','Armabee','Glub','Squidle','Goleling','Hywirl','Dragon'];
+let EN_MODELS;
 const BOSS_MODELS=['MushroomKing','Yeti','BlueDemon','Demon'];
 const M={};let REST=null,FOODG=null,loaded=0,total=0,READY=false;
 function loadGLB(url){total++;return new Promise(ok=>loader.load(url,g=>{loaded++;prog();ok(g)},undefined,e=>{console.warn('load fail',url,e);loaded++;prog();ok(null)}))}
@@ -30,7 +30,7 @@ function prepChar(g,h){ // returns {proto, clips}
  const clips={};for(const c of g.animations)clips[c.name]=c;return {proto:w,clips}}
 async function loadAll(){
  const ps=[loadGLB('assets/models/restaurant.glb').then(g=>{REST=g&&g.scene}),loadGLB('assets/models/foods.glb').then(g=>{FOODG=g&&g.scene}),loadGLB('assets/models/player.glb').then(g=>M.player=prepChar(g,2.6))];
- for(const n of EN_MODELS)ps.push(loadGLB('assets/models/e_'+n+'.glb').then(g=>M['e_'+n]=prepChar(g,1.9)));
+ EN_MODELS=ROSTER.map(t=>t.m);for(const n of EN_MODELS)ps.push(loadGLB('assets/models/e_'+n+'.glb').then(g=>M['e_'+n]=prepChar(g,/^Big/.test(n)?2.5:1.9)));
  for(const n of BOSS_MODELS)ps.push(loadGLB('assets/models/b_'+n+'.glb').then(g=>M['b_'+n]=prepChar(g,1)));
  await Promise.all(ps);READY=true;prog();$('bNew').disabled=false;$('bCont').disabled=false;if(!load())$('bCont').style.display='none'}
 // ---- props (instanced) ----
@@ -54,6 +54,10 @@ function initIM(){
  IM.eb=new IMesh([{geo:new THREE.SphereGeometry(0.36,8,6),mat:basic(0xff40ff),m:new THREE.Matrix4()}],600);
  IM.gem=new IMesh([{geo:new THREE.OctahedronGeometry(0.3),mat:new THREE.MeshBasicMaterial({color:0xffffff}),m:new THREE.Matrix4()}],500,true);
  IM.shadow=new IMesh([{geo:new THREE.CircleGeometry(1,16).rotateX(-Math.PI/2),mat:new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:0.35,depthWrite:false}),m:new THREE.Matrix4()}],400);
+ IM.orb=new IMesh([{geo:new THREE.SphereGeometry(0.42,10,8),mat:basic(0x9a50ff),m:new THREE.Matrix4()},{geo:new THREE.SphereGeometry(0.6,10,8),mat:basic(0xd0a0ff,0.35),m:new THREE.Matrix4()}],300);
+ IM.fire=new IMesh([{geo:new THREE.SphereGeometry(0.45,10,8),mat:basic(0xffd040),m:new THREE.Matrix4()},{geo:new THREE.SphereGeometry(0.7,10,8),mat:basic(0xff5010,0.45),m:new THREE.Matrix4()}],300);
+ IM.bone=new IMesh([{geo:new THREE.CylinderGeometry(0.12,0.12,1.1,6).rotateZ(Math.PI/2),mat:new THREE.MeshStandardMaterial({color:0xf4f0e0}),m:new THREE.Matrix4()},{geo:new THREE.SphereGeometry(0.2,6,5).translate(0.55,0,0),mat:new THREE.MeshStandardMaterial({color:0xf4f0e0}),m:new THREE.Matrix4()},{geo:new THREE.SphereGeometry(0.2,6,5).translate(-0.55,0,0),mat:new THREE.MeshStandardMaterial({color:0xf4f0e0}),m:new THREE.Matrix4()}],300);
+ IM.spike=new IMesh([{geo:new THREE.ConeGeometry(0.22,1.0,6).rotateX(Math.PI/2),mat:new THREE.MeshStandardMaterial({color:0x40c060,roughness:0.5}),m:new THREE.Matrix4()}],300);
  IM.knife=new IMesh(propParts('knife'),60);IM.plate=new IMesh(propParts('plate'),20);IM.burger=new IMesh(propParts('food_burger'),60);
  IM.pot=new IMesh(propParts('pot_large'),6,true);IM.lid=new IMesh(propParts('lid_large'),6,true);IM.pan=new IMesh(propParts('pan_A'),4);
  for(const f of FOODS)IM['f_'+f]=new IMesh(propParts(f),200,true);}
@@ -64,18 +68,49 @@ function prim(k,x,z,y,sx,sz,ry,color,op){let m=POOL[k][PI_[k]];if(!m){m=new THRE
  m.visible=true;m.position.set(x,y,z);m.scale.set(sx,1,sz);m.rotation.set(0,ry||0,0);m.material.color.set(color);m.material.opacity=op;return m}
 function primBegin(){for(const k in PI_)PI_[k]=0}function primEnd(){for(const k in POOL)for(let i=PI_[k];i<POOL[k].length;i++)POOL[k][i].visible=false}
 // ================= definitions =================
-const FOODS=['food_ingredient_tomato','food_burger','food_ingredient_onion','food_ingredient_carrot','food_ingredient_cheese','food_vegetableburger','food_ingredient_potato','food_ingredient_ham'];
+const FOODS=[];
 // enemy roster (order = progression)
 const ROSTER=[
- {n:'グリーンスライム',m:'GreenBlob',sp:22,an:'Walk'},{n:'トマトン',food:'food_ingredient_tomato',sp:28},{n:'ハト',m:'Pigeon',sp:40,an:'Walk'},
- {n:'キノコっ子',m:'Mushnub',sp:24,an:'Walk'},{n:'暴走バーガー',food:'food_burger',sp:30},{n:'ニワトリ',m:'Chicken',sp:34,an:'Walk'},
- {n:'のらネコ',m:'Cat',sp:38,an:'Walk'},{n:'タマネギ兵',food:'food_ingredient_onion',sp:26},{n:'グラブ',m:'Glub',sp:30,an:'Fast_Flying'},
- {n:'キラービー',m:'Armabee',sp:44,an:'Fast_Flying'},{n:'ピンクスライム',m:'PinkBlob',sp:26,an:'Walk'},{n:'ニンジン騎士',food:'food_ingredient_carrot',sp:34},
- {n:'サカナ男',m:'Fish',sp:30,an:'Walk'},{n:'サボテン',m:'Cactoro',sp:24,an:'Walk'},{n:'おばけ',m:'Ghost',sp:34,an:'Fast_Flying'},
- {n:'チーズブロック',food:'food_ingredient_cheese',sp:22},{n:'イカ',m:'Squidle',sp:32,an:'Fast_Flying'},{n:'番犬',m:'Dog',sp:42,an:'Walk'},
- {n:'ゴーレム',m:'Goleling',sp:24,an:'Fast_Flying'},{n:'つむじ風',m:'Hywirl',sp:40,an:'Fast_Flying'},{n:'ベジバーガー',food:'food_vegetableburger',sp:30},
- {n:'魔法使い',m:'Wizard',sp:30,an:'Walk'},{n:'ポテトン',food:'food_ingredient_potato',sp:26},{n:'ミニドラゴン',m:'Dragon',sp:34,an:'Fast_Flying'},{n:'ハムの塊',food:'food_ingredient_ham',sp:24}];
-ROSTER.forEach((t,i)=>{t.idx=i;t.hp=5+i*2.6;t.dmg=5+i*0.8;t.xp=1+Math.floor(i/4);t.r=5+(i>15?1:0)});
+{n:'グリーンスライム',m:'GreenBlob',sp:22,an:'Walk'},
+{n:'ハト',m:'Pigeon',sp:40,an:'Walk'},
+{n:'キノコっ子',m:'Mushnub',sp:24,an:'Walk'},
+{n:'ニワトリ',m:'Chicken',sp:34,an:'Walk'},
+{n:'骸骨兵',m:'Skeleton_Minion',sp:28,an:'Walking_D_Skeletons'},
+{n:'骸骨魔術師',m:'Skeleton_Mage',sp:26,an:'Walking_D_Skeletons',beh:'shoot',pk:'orb'},
+{n:'のらネコ',m:'Cat',sp:38,an:'Walk'},
+{n:'グラブ',m:'Glub',sp:30,an:'Fast_Flying'},
+{n:'ピンクスライム',m:'PinkBlob',sp:24,an:'Walk',beh:'split'},
+{n:'番犬',m:'Dog',sp:42,an:'Walk',beh:'dash'},
+{n:'骸骨盗賊',m:'Skeleton_Rogue',sp:32,an:'Walking_D_Skeletons',beh:'kite',pk:'bone'},
+{n:'キラービー',m:'Armabee',sp:44,an:'Fast_Flying'},
+{n:'サカナ男',m:'Fish',sp:30,an:'Walk'},
+{n:'ドクロ火の玉',m:'Ghost_Skull',sp:36,an:'Fast_Flying',beh:'explode'},
+{n:'魔法使い',m:'Wizard',sp:30,an:'Walk',beh:'shoot',pk:'orb'},
+{n:'骸骨戦士',m:'Skeleton_Warrior',sp:24,an:'Walking_D_Skeletons',beh:'shield'},
+{n:'サボテン',m:'Cactoro',sp:24,an:'Walk',beh:'shoot',pk:'spike'},
+{n:'おばけ',m:'Ghost',sp:34,an:'Fast_Flying'},
+{n:'ニンジャ',m:'Ninja',sp:36,an:'Walk',beh:'kite',pk:'spike'},
+{n:'宇宙人',m:'Alien',sp:28,an:'Walk',beh:'summon'},
+{n:'ビッグバニー',m:'BigBunny',sp:38,an:'Run',beh:'dash'},
+{n:'イカ',m:'Squidle',sp:32,an:'Fast_Flying',beh:'shoot',pk:'orb'},
+{n:'化けキノコ',m:'Mushnub_Evolved',sp:26,an:'Walk',beh:'split'},
+{n:'ゴーレム',m:'Goleling',sp:24,an:'Fast_Flying'},
+{n:'つむじ風',m:'Hywirl',sp:40,an:'Fast_Flying'},
+{n:'アルパキング',m:'Alpaking',sp:34,an:'Fast_Flying',beh:'explode'},
+{n:'オーク',m:'Orc',sp:28,an:'Walk'},
+{n:'鳥人',m:'Birb',sp:34,an:'Walk'},
+{n:'雪ん子',m:'Yeti',sp:26,an:'Walk',beh:'shield'},
+{n:'部族の戦士',m:'Tribal',sp:30,an:'Fast_Flying',beh:'summon'},
+{n:'大ガエル',m:'BigFrog',sp:30,an:'Run',beh:'dash'},
+{n:'スズメバチ王',m:'Armabee_Evolved',sp:46,an:'Fast_Flying',beh:'dash'},
+{n:'ミニドラゴン',m:'Dragon',sp:34,an:'Fast_Flying'},
+{n:'グラブキング',m:'Glub_Evolved',sp:30,an:'Fast_Flying',beh:'split'},
+{n:'鉄ゴーレム',m:'Goleling_Evolved',sp:24,an:'Fast_Flying',beh:'explode'},
+{n:'ドクロオーク',m:'BigOrc_Skull',sp:22,an:'Run',beh:'shield'},
+{n:'モンクルース',m:'BigMonkroose',sp:34,an:'Run',beh:'kite',pk:'bone'},
+{n:'恐竜',m:'BigDino',sp:32,an:'Run'},
+{n:'炎の竜',m:'Dragon_Evolved',sp:32,an:'Fast_Flying',beh:'shoot',pk:'fire'}];
+ROSTER.forEach((t,i)=>{t.idx=i;t.hp=5+i*1.8;t.dmg=5+i*0.55;t.xp=1+Math.floor(i/4);t.r=5+(i>15?1:0)});
 const BOSSES=[
  {n:'マッシュルーム料理長',m:'MushroomKing',col:0xffffff,h:7.0},
  {n:'冷凍庫の雪男',m:'Yeti',col:0xbfe8ff,h:7.5},
@@ -145,7 +180,7 @@ function behMove(e,dt,d,dx,dy){const ux=dx/d,uy=dy/d;let vx=ux*e.sp,vy=uy*e.sp;i
  switch(e.beh){
  case 'shoot':case 'kite':
   if(e.beh==='kite'){if(d<85){vx=-ux*e.sp;vy=-uy*e.sp}else if(d<135){vx=-uy*e.sp*0.7*e.side;vy=ux*e.sp*0.7*e.side}}
-  if(e.wind>0){e.wind-=dt;vx=vy=0;if(e.wind<=0){const a=e.wa,sh=shopOf(floor);bullets.push({k:'eb',x:e.x,y:e.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,life:2.5,d:e.dmg*0.7,r:3,enemy:1,food:sh.foods[(Math.random()*sh.foods.length)|0]})}}
+  if(e.wind>0){e.wind-=dt;vx=vy=0;if(e.wind<=0){const a=e.wa;bullets.push({k:'eb',x:e.x,y:e.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,life:2.5,d:e.dmg*0.7,r:3,enemy:1,pk:e.t.pk||'orb'})}}
   else if(e.cd<=0&&d<170){e.cd=2.4+Math.random()*1.5;e.wind=0.65;e.wa=Math.atan2(dy,dx);hz.push({k:'l',x:e.x,y:e.y,a:e.wa,len:Math.min(180,d+40),w:5,warn:0.65,t:0,dm:0})}break;
  case 'dash':
   if(e.dt>0){e.dt-=dt;vx=e.dvx;vy=e.dvy}else if(e.wind>0){e.wind-=dt;vx=vy=0;if(e.wind<=0){e.dt=0.45;e.dvx=Math.cos(e.wa)*Math.max(200,e.sp*5);e.dvy=Math.sin(e.wa)*Math.max(200,e.sp*5)}}
@@ -227,8 +262,9 @@ function genFloor(){
  // solid() treats 1 only; make deco solid count: (value 1)
  P.x=entrance.x;P.y=entrance.y;P.hp=P.mhp;floorBgm();P.inv=1.5;spawnT=0;time=0;save();
 }
-function spawnEnemy(x,y,forceIdx,noBeh){if(solid((x/T)|0,(y/T)|0))return;const mx=Math.min(ROSTER.length-1,1+floor),mn=Math.max(0,mx-5);const t=ROSTER[forceIdx??(mn+Math.floor(Math.random()*(mx-mn+1)))];const k=1+floor*0.22;
- const e={x,y,t,hp:t.hp*k,mhp:t.hp*k,sp:t.sp*(1+floor*0.015),dmg:t.dmg*(1+floor*0.1),xp:t.xp,r:t.r,hit:0,kx:0,ky:0,ph0:Math.random()*6};if(!noBeh&&Math.random()<Math.min(0.45,0.05+0.05*floor)){const o=shopOf(floor).beh.filter(b=>BEH_UNLOCK[b]<=floor);if(o.length)setBeh(e,o[(Math.random()*o.length)|0])}enemies.push(e);return e}
+function spawnEnemy(x,y,forceIdx,noBeh){if(solid((x/T)|0,(y/T)|0))return;const mx=Math.min(ROSTER.length-1,2+Math.floor(floor*1.6)),mn=Math.max(0,mx-9);const sh=shopOf(floor);
+ let t;if(forceIdx!==undefined)t=ROSTER[forceIdx];else{const win=ROSTER.slice(mn,mx+1);let cand=noBeh?win.filter(r=>!r.beh):win;if(!noBeh&&Math.random()<0.3){const pref=win.filter(r=>r.beh&&sh.beh.includes(r.beh));if(pref.length)cand=pref}if(!cand.length)cand=[ROSTER[0]];t=cand[(Math.random()*cand.length)|0]}const k=1+floor*0.22;
+ const e={x,y,t,hp:t.hp*k,mhp:t.hp*k,sp:t.sp*(1+floor*0.015),dmg:t.dmg*(1+floor*0.1),xp:t.xp,r:t.r,hit:0,kx:0,ky:0,ph0:Math.random()*6};if(!noBeh&&t.beh&&BEH_UNLOCK[t.beh]<=floor)setBeh(e,t.beh);enemies.push(e);return e}
 function spawnBoss(){const tier=Math.floor(floor/5)-1,b=BOSSES[tier%4],lap=Math.floor(tier/4);const base=(600+tier*700)*(1+lap*2)*4;const dps=dpsAcc/Math.max(20,dpsT);const hp=Math.round(Math.max(base,dps*1.2*80));
  boss={x:15*T+8,y:6*T,t:{},bd:b,hp,mhp:hp,sp:22+tier*3,dmg:(26+tier*10)*(1+lap*0.8),xp:50,r:12+tier,hit:0,kx:0,ky:0,isBoss:1,atk:2.5,tier:tier%4,lap,ph:1,ai:null,bud:0};boss.bud=boss.mhp/65*2;enemies.push(boss);bossPhase=2;SND.play('se_boss',0.7);floorBgm();
  const md=M['b_'+b.m];if(md){bossView=makeView('b_'+b.m,'Walk');bossView.obj.scale.setScalar(b.h);bossView.obj.traverse(o=>{if(o.isMesh)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.color&&m.color.multiply(new THREE.Color(b.col)))})}
@@ -396,7 +432,7 @@ function render(dt){const px=W(P.x),pz=W(P.y);camT.lerp(_v.set(px,0,pz),Math.min
  // gems
  for(const g of gems){const s=Math.sin(time*5+g.x)*0.15;if(g.heal)IM.burger.put(mtx(W(g.x),0.2+s,W(g.y),time*2,0.6));else IM.gem.put(mtx(W(g.x),0.45+s,W(g.y),time*3,1,1.3,1),GEMC[g.v>=5?2:g.v>=2?1:0])}
  // bullets
- for(const b of bullets){if(b.food){const fs=0.9/fsize(b.food);foodIM(b.food).put(mtx(W(b.x),0.9,W(b.y),time*8,fs));IM.eb.put(mtx(W(b.x),0.9,W(b.y),0,0.5))}else if(b.enemy)IM.eb.put(mtx(W(b.x),0.9,W(b.y)));else if(b.k==='axe'){_e.set(b.rot,Math.atan2(b.vx,b.vy),0);_q.setFromEuler(_e);IM.knife.put(new THREE.Matrix4().compose(_v.set(W(b.x),1,W(b.y)),_q,_s.set(1.6,1.6,1.6)))}else IM.bolt.put(mtx(W(b.x),0.9,W(b.y)),b.fam?GEMC[2]:ONE)}
+ for(const b of bullets){if(b.pk){const ang=Math.atan2(b.vx,b.vy);if(b.pk==='bone')IM.bone.put(mtx(W(b.x),0.9,W(b.y),time*14,1));else if(b.pk==='spike')IM.spike.put(mtx(W(b.x),0.9,W(b.y),ang,1));else IM[b.pk==='fire'?'fire':'orb'].put(mtx(W(b.x),0.9,W(b.y),0,1+0.15*Math.sin(time*20)))}else if(b.enemy)IM.eb.put(mtx(W(b.x),0.9,W(b.y)));else if(b.k==='axe'){_e.set(b.rot,Math.atan2(b.vx,b.vy),0);_q.setFromEuler(_e);IM.knife.put(new THREE.Matrix4().compose(_v.set(W(b.x),1,W(b.y)),_q,_s.set(1.6,1.6,1.6)))}else IM.bolt.put(mtx(W(b.x),0.9,W(b.y)),b.fam?GEMC[2]:ONE)}
  // orbs
  if(P.w.orb){const L=P.w.orb,n=1+L,R=(28+L*2)*areaMul();for(let i=0;i<n;i++){const a=P.orbA+i*Math.PI*2/n;IM.plate.put(mtx(W(P.x+Math.cos(a)*R),0.8,W(P.y+Math.sin(a)*R),a*3,1.3))}}
  if(P.w.aura){const R=(26+P.w.aura*5)*areaMul();prim('disc',px,pz,0.06,W(R),W(R),0,0xfff080,0.18+0.06*Math.sin(time*6));prim('ring',px,pz,0.07,W(R),W(R),0,0xffe060,0.5)}
@@ -478,4 +514,4 @@ tap($('bRetry'),()=>{$('dead').classList.remove('on');if(playerView)playerView.c
 // title backdrop
 camera.position.set(0,10,14);camera.lookAt(0,0,0);
 loadAll();
-window.__dbg={get FOODC(){return FOODC},set foodT(v){foodT=v},get gems(){return gems},ZK,gainXP,get boss(){return boss},scene,THREE,camera,get pv(){return playerView},M,get P(){return P},get enemies(){return enemies},setFloor(f){floor=f;genFloor()},get state(){return state},SND,get SPD(){return SPD},get hz(){return hz},get chests(){return chests},get bossTimer(){return bossTimer},set bossTimer(v){bossTimer=v},get boss(){return boss},get READY(){return READY},openChest,get stairs(){return stairs},renderer,get floor(){return floor}};
+window.__dbg={spawnEnemy,ROSTER,get bullets(){return bullets},get FOODC(){return FOODC},set foodT(v){foodT=v},get gems(){return gems},ZK,gainXP,get boss(){return boss},scene,THREE,camera,get pv(){return playerView},M,get P(){return P},get enemies(){return enemies},setFloor(f){floor=f;genFloor()},get state(){return state},SND,get SPD(){return SPD},get hz(){return hz},get chests(){return chests},get bossTimer(){return bossTimer},set bossTimer(v){bossTimer=v},get boss(){return boss},get READY(){return READY},openChest,get stairs(){return stairs},renderer,get floor(){return floor}};
