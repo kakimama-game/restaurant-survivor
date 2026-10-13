@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#2a1a10"><link rel="icon" href="data:,"><title>レストランサバイバー</title>
+<style>
+html,body{margin:0;height:100%;background:#1a100a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;font-family:sans-serif;color:#fff;-webkit-touch-callout:none}
+#gl,#hud{position:fixed;inset:0;width:100%;height:100%;display:block}#hud{pointer-events:none;z-index:2}
+.ov{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(20,10,5,.78);z-index:5;text-align:center;padding:20px;box-sizing:border-box}
+.ov.on{display:flex}
+button{font-size:18px;margin:6px;padding:12px 24px;border:3px solid #fff;background:#a8402a;color:#fff;border-radius:10px;font-weight:bold;min-width:220px;touch-action:manipulation;cursor:pointer}
+button:disabled{opacity:.5}
+.card{display:block;width:100%;max-width:340px;text-align:left;font-size:15px;background:#5a3020}
+.card b{color:#ffd84a}
+h1{font-size:34px;color:#ffd84a;text-shadow:3px 3px #a02,0 0 12px #f80;margin:0 0 6px}
+#spd{position:fixed;right:70px;top:calc(8px + env(safe-area-inset-top));z-index:4;min-width:0;padding:6px 10px;font-size:16px;margin:0;display:none}
+#pause{position:fixed;right:8px;top:calc(8px + env(safe-area-inset-top));z-index:4;min-width:0;padding:6px 14px;font-size:16px;margin:0;display:none}
+#title{background:radial-gradient(#5a2a14ee,#1a0c06ee)}
+#err{position:fixed;left:0;right:0;bottom:0;z-index:9;color:#f88;font-size:12px;background:#000c;display:none;padding:4px}
+</style></head><body>
+<canvas id="gl"></canvas><canvas id="hud"></canvas>
+<button id="pause">⏸</button><button id="spd" class="spdB">»1x</button>
+<div class="ov on" id="title"><div style="font-size:48px">🍳</div><h1>レストランサバイバー</h1><p>巨大レストランタワーにあふれる<br>モンスターをなぎ倒し、最上階を目指せ！</p>
+<p id="loadMsg" style="color:#fd8">読み込み中… 0%</p>
+<button id="bNew" disabled>はじめから</button><button id="bCont" disabled>つづきから</button><button class="bSnd">🔊 サウンド: ON</button><button id="bCred">クレジット</button>
+<p style="font-size:13px;opacity:.8">スマホ：画面をドラッグで移動<br>PC：WASD / 矢印キー　攻撃は自動</p></div>
+<div class="ov" id="lvl"><h2>レベルアップ！</h2><div id="choices"></div></div>
+<div class="ov" id="tre"><div style="font-size:44px">🍲</div><h2 style="color:#ffd84a">黄金の寸胴鍋を開けた！</h2><div id="treName" style="font-size:22px;font-weight:bold;color:#7ff"></div><p id="treDesc"></p><button id="bTre">OK</button></div>
+<div class="ov" id="cred" style="overflow:auto;justify-content:flex-start"><h2>クレジット</h2><div style="text-align:left;font-size:13px;max-width:380px;line-height:1.5;word-break:break-all">
+<p><b>レストランの3Dモデル</b><br>「KayKit Restaurant Bits」 by Kay Lousberg (www.kaylousberg.com)<br>ライセンス: CC0 1.0<br>https://kaylousberg.itch.io/restaurant-bits</p>
+<p><b>主人公の3Dモデル</b><br>「KayKit Adventurers Character Pack」 by Kay Lousberg<br>ライセンス: CC0 1.0<br>https://kaylousberg.itch.io/kaykit-adventurers</p>
+<p><b>モンスター・ボスの3Dモデル</b><br>「Ultimate Monsters」 by Quaternius<br>ライセンス: CC0 1.0<br>https://quaternius.com/packs/ultimatemonsters.html</p>
+<p><b>BGM</b><br>「5 Chiptunes (Action)」 by Juhani Junkala<br>ライセンス: CC0 1.0<br>https://opengameart.org/content/5-chiptunes-action</p>
+<p><b>効果音</b><br>「Impact Sounds」「RPG Audio」「Digital Audio」 by Kenney (www.kenney.nl)<br>ライセンス: CC0 1.0</p>
+<p><b>3Dエンジン</b><br>three.js (MIT License)</p>
+<p>素晴らしい素材をありがとうございます！</p></div><button id="bCredX">もどる</button></div>
+<div class="ov" id="pz"><h2>ポーズ</h2><button id="bRes">つづける</button><button class="spdB" id="spd2">»1x</button><button class="bSnd">🔊 サウンド: ON</button><button id="bTitle">タイトルへ</button></div>
+<div class="ov" id="dead"><h2 style="color:#f55">やられた…</h2><p>何も失わずにこの階の入口から再挑戦！</p><button id="bRetry">再挑戦</button></div>
+<div id="err"></div>
+<script>
+window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent='エラー: '+(e.message||e)});
+window.addEventListener('unhandledrejection',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent='エラー: '+(e.reason&&e.reason.message||e.reason)});
+</script>
+<script type="importmap">{"imports":{"three":"./lib/three.module.min.js","three/addons/":"./lib/addons/"}}</script>
+<script type="module" src="main.js"></script>
+</body></html>
